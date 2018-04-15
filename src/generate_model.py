@@ -48,6 +48,7 @@ def generate_bi_gram_model():
             json.dump(numerators, f, indent=4, ensure_ascii=False)
         with open(os.path.join(data_dir, 'denominators' + article_name + '_' + str(n) + '.json'), 'w') as f:
             json.dump(denominators, f, indent=4, ensure_ascii=False)
+        article_count += 1
 
     numerators = {}
     denominators = {}
