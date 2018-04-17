@@ -5,9 +5,8 @@ import time
 data_dir = '../data'
 
 
-def generate_bi_gram_model():
+def generate_bi_gram_model(n):
     start_time = time.time()
-    n = 2
     article_names = ['2016-0' + str(i) for i in range(1, 10)] + ['2016-10', '2016-11']
     # article_names = ['2016-01']
     # debug
@@ -64,7 +63,7 @@ def generate_bi_gram_model():
     with open(os.path.join(data_dir, 'denominators' + '_' + str(n) + '.json'), 'w') as f:
         json.dump(denominators, f, indent=4, ensure_ascii=False)
     end_time = time.time()
-    print("time: %f" % (end_time - start_time))
+    print("time: %f seconds" % (end_time - start_time))
 
 
 def combine_dicts(dict1, dict2):
@@ -77,6 +76,6 @@ def combine_dicts(dict1, dict2):
 
 
 if __name__ == '__main__':
-    generate_bi_gram_model()
+    generate_bi_gram_model(2)
 
 
