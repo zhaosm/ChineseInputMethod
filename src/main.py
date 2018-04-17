@@ -2,15 +2,16 @@ import os
 import json
 import itertools
 from src.generate_model import generate_bi_gram_model
+import numpy as np
 
 
 data_dir = '../data'
-gamma = 0.5
+max_increase_each_round = 10
 
 
 def main(n):
     # debug
-    print("using %d-gram model, gamma=%f" % (n, gamma))
+    print("using %d-gram model" % n)
     while True:
         try:
             # debug
@@ -43,24 +44,53 @@ def main(n):
 
     print("calculating...")
     for line in input:
-        result = ''
-        # debug
-        count = 0
-        max_score = 0
-
-        candidates = [alphabet[spell] for spell in line]
-        candidates = itertools.product(*candidates)
-        for candidate in candidates:
-            candidate = ''.join(list(candidate))
-            s = score(candidate, numerators, denominators, n)
-            if s > max_score:
-                max_score = s
-                result = candidate
+        try:
+            candidates = [alphabet[spell] for spell in line]
+        except Exception:
+            print("the inputs contain unknown spells")
+            exit(1)
+        results = []  # list of strings
+        scores = []
+        round = 1
+        new_results = []
+        new_scores = []
+        for characters in candidates:
             # debug
-            count += 1
-            print("candidate No. %d" % count)
+            last_newly_added = len(new_scores)
+            origin_len = len(results)
+            new_results = []
+            new_scores = []
+            print("round No. %d" % round)
+            for character in characters:
+                if round == 1:
+                    r = character
+                    s = score(r, numerators, denominators, n)
+                    new_results.append(r)
+                    new_scores.append(s)
+                    continue
+                for i, result in enumerate(results[origin_len - last_newly_added:origin_len]):
+                    r = result + character
+                    s = scores[i] * score(r, numerators, denominators, n)
+                    new_results.append(r)
+                    new_scores.append(s)
+            if len(new_scores) > max_increase_each_round:
+                sorted_indexes = np.argsort([-s for s in new_scores]).tolist()
+                new_results = [new_results[i] for i in sorted_indexes][:max_increase_each_round]
+                new_scores = [new_scores[i] for i in sorted_indexes][:max_increase_each_round]
+            results = results + new_results
+            scores = scores + new_scores
+            round += 1
+        last_newly_added = len(new_scores)
+        scores = scores[-last_newly_added:]
+        results = results[-last_newly_added:]
+        if len(scores) == 0:
+            print("input: %s, no results" % line)
+            continue
+        sorted_indexes = np.argsort([-x for x in scores]).tolist()
+        results = [results[i] for i in sorted_indexes]
+        # best_index = scores.index(max(scores))
         # debug
-        print("input: %s, output: %s, score: %.16f" % (line, result, max_score))
+        print("input: %s, outputs: %s" % (line, str(results)))
 
 
 def score(candidate, numerators, denominators, n):
@@ -69,7 +99,8 @@ def score(candidate, numerators, denominators, n):
     :return: score based on n-gram model
     """
     length = len(candidate)
-    if len(candidate) < n - 1:
+    # need small models. if didn't find such combination in this model, return 0
+    if length < n - 1:
         # debug
         print("need %d-gram information" % length)
         while True:
@@ -87,22 +118,26 @@ def score(candidate, numerators, denominators, n):
             return small_numerators[candidate] / sum(small_numerators.values())
         except Exception:
             return 0.0
+
     numerators_sum = sum(numerators.values())
     denominators_sum = sum(denominators.values())
-    try:
-        score = denominators[candidate[0:n - 1]] / denominators_sum
-    except Exception:
-        return 0.0
-    for i in range(n - 1, length):
+    if length == n - 1:
         try:
-            denominator = denominators[candidate[i - n + 1:i]] / denominators_sum
-            numerator = numerators[candidate[i - n + 1:i + 1]] / numerators_sum
+            return denominators[candidate] / denominators_sum
         except Exception:
             return 0.0
-        score = score * numerator / denominator
-    return score
+
+    # normal length
+    i = length - 1
+    try:
+        denominator = denominators[candidate[i - n + 1:i]] / denominators_sum
+        numerator = numerators[candidate[i - n + 1:i + 1]] / numerators_sum
+    except Exception:
+        # no such combination, return 0
+        return 0.0
+    return numerator / denominator
 
 
 if __name__ == '__main__':
-    main(2)
+    main(3)
 
