@@ -12,19 +12,24 @@ max_increase_each_round = 10
 def main(n):
     # debug
     print("using %d-gram model" % n)
-    while True:
-        try:
-            # debug
-            print("loading model")
-            with open(os.path.join(data_dir, 'numerators_' + str(n) + '.json'), 'r') as f:
-                numerators = json.load(f)
-            with open(os.path.join(data_dir, 'denominators_' + str(n) + '.json'), 'r') as f:
-                denominators = json.load(f)
-            break
-        except Exception:
-            # debug
-            print("model not found. generating %d gram model..." % n)
-            generate_bi_gram_model(n)
+    numerators = []
+    denominators = []
+    for i in range(1, n + 1):
+        while True:
+            try:
+                # debug
+                print("loading %d-gram model" % i)
+                with open(os.path.join(data_dir, 'numerators_' + str(i) + '.json'), 'r') as f:
+                    _numerators = json.load(f)
+                with open(os.path.join(data_dir, 'denominators_' + str(i) + '.json'), 'r') as f:
+                    _denominators = json.load(f)
+                numerators.append(_numerators)
+                denominators.append(_denominators)
+                break
+            except Exception:
+                # debug
+                print("model not found. generating %d gram model..." % n)
+                generate_bi_gram_model(n)
     # debug
     print("reading phonetic alphabet...")
     alphabet = {}
@@ -64,13 +69,13 @@ def main(n):
             for character in characters:
                 if round == 1:
                     r = character
-                    s = score(r, numerators, denominators, n)
+                    s = score(r, numerators, denominators, n, True)
                     new_results.append(r)
                     new_scores.append(s)
                     continue
                 for i, result in enumerate(results[origin_len - last_newly_added:origin_len]):
                     r = result + character
-                    s = scores[i] * score(r, numerators, denominators, n)
+                    s = scores[i] * score(r, numerators, denominators, n, False)
                     new_results.append(r)
                     new_scores.append(s)
             if len(new_scores) > max_increase_each_round:
@@ -93,45 +98,32 @@ def main(n):
         print("input: %s, outputs: %s" % (line, str(results)))
 
 
-def score(candidate, numerators, denominators, n):
+def score(candidate, numerators, denominators, n, is_start):
     """
     :param candidate: list of characters
     :return: score based on n-gram model
     """
     length = len(candidate)
     # need small models. if didn't find such combination in this model, return 0
-    if length < n - 1:
-        # debug
-        print("need %d-gram information" % length)
-        while True:
-            # debug
-            print("loading %d-gram model" % length)
+    if is_start:
+        if length < n:
             try:
-                with open(os.path.join(data_dir, 'numerators_%d.json' % length), 'r') as f:
-                    small_numerators = json.load(f)
-                break
+                return numerators[length - 1][candidate] / sum(numerators[length - 1].values())
             except Exception:
-                # debug
-                print("haven't found %d-gram model, generating..." % length)
-                generate_bi_gram_model(length)
-        try:
-            return small_numerators[candidate] / sum(small_numerators.values())
-        except Exception:
-            return 0.0
+                return 0.0
+    if length < n:
+        final_numerators = numerators[length - 1]
+        final_denominators = denominators[length - 1]
+    else:
+        final_numerators = numerators[n - 1]
+        final_denominators = denominators[n - 1]
 
-    numerators_sum = sum(numerators.values())
-    denominators_sum = sum(denominators.values())
-    if length == n - 1:
-        try:
-            return denominators[candidate] / denominators_sum
-        except Exception:
-            return 0.0
-
-    # normal length
+    final_numerators_sum = sum(final_numerators.values())
+    final_denominators_sum = sum(final_denominators.values())
     i = length - 1
     try:
-        denominator = denominators[candidate[i - n + 1:i]] / denominators_sum
-        numerator = numerators[candidate[i - n + 1:i + 1]] / numerators_sum
+        denominator = final_denominators[candidate[i - min([n, length]) + 1:i]] / final_denominators_sum
+        numerator = final_numerators[candidate[i - min([n, length]) + 1:i + 1]] / final_numerators_sum
     except Exception:
         # no such combination, return 0
         return 0.0

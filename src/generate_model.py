@@ -76,6 +76,6 @@ def combine_dicts(dict1, dict2):
 
 
 if __name__ == '__main__':
-    generate_bi_gram_model(2)
+    generate_bi_gram_model(4)
 
 
